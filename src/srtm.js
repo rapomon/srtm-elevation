@@ -91,6 +91,16 @@ SRTMElevationDownloader.prototype._unzipSync = async function(zipPath, targetPat
             return;
         }
 
+        // Create cache folder if it does not exist
+        if (!fs.existsSync(targetPath)) {
+            try {
+                fs.mkdirSync(targetPath);
+            } catch (err) {
+                reject(err);
+                return;
+            }
+        }
+
         try {
             const zipFile = await yauzlPromise.open(zipPath);
             const entries = await zipFile.readEntries();
