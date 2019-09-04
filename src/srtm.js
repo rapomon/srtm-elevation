@@ -41,6 +41,7 @@ SRTMElevationDownloader.prototype.download = async function(tileKey, latLng, cb)
             cleanup();
             cb(undefined);
         } catch(err) {
+            stream.end();
             cleanup();
             cb(err);
         };
