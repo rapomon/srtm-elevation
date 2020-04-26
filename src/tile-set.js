@@ -14,7 +14,7 @@ function TileSet(tileDir, options) {
         this.options.downloader = undefined;
     }
     this._tileDir = tileDir;
-    this._tileCache = LRU({
+    this._tileCache = new LRU({
         max: 1000,
         dispose: function (key, n) {
             if(n) {
