@@ -1,51 +1,58 @@
-const requestPromise = require('request-promise');
+const fetch = require('node-fetch');
 const fs = require('fs');
-
-const filelist = [
-    { region: 'Africa', files: [] },
-    { region: 'Australia', files: [] },
-    { region: 'Eurasia', files: [] },
-    { region: 'Islands', files: [] },
-    { region: 'North_America', files: [] },
-    { region: 'South_America', files: [] }
-];
-
-const baseUrl = 'http://dds.cr.usgs.gov/srtm/version2_1/SRTM3/';
 
 async function initBuild() {
     let timestampBegin = process.hrtime();
     let timestampEnd;
 
-    // Retrieve files from each region
-    for(let r = 0; r < filelist.length; r++) {
-        let item = filelist[r];
-        try {
-            process.stdout.write('\nGet links from ' + baseUrl + item.region + ' ... ');
-            let res = await requestPromise({ uri: baseUrl + item.region, resolveWithFullResponse: true });
-            process.stdout.write(''+res.statusCode);
-            if(res.statusCode === 200) {
-                process.stdout.write(' OK');
-                let html = res.body;
-                let results = html.match(/href=\"(.*?)\"/gi);
-                for(let i = 0; i < results.length; i++) {
-                    let result = results[i];
-                    let ini = 'href=\"'.length;
-                    let end = result.indexOf('.hgt');
-                    if(end === -1) continue;
-                    let file = result.substring(ini, end);
-                    item.files.push(file);
+    const baseUrl = 'https://e4ftl01.cr.usgs.gov/MEASURES/SRTMGL3.003/2000.02.11/';
+
+    let files = [];
+    try {
+        let res = await fetch(baseUrl);
+        if(res.status === 200) {
+            const regex = /href=\"(.*?)\"/gi;
+            let html = await res.text();
+            let matches = html.match(regex);
+            // Retrieve files from each page
+            for(let i = 0; i < matches.length; i++) {
+                let match = matches[i];
+                let ini = 'href=\"'.length;
+                let end = match.indexOf('\"', ini);
+                if(end === -1) continue;
+                let pageUrl = match.substring(ini, end);
+                if(pageUrl.startsWith(baseUrl)) {
+                    process.stdout.write(`\nGet links from ${pageUrl} ... `);
+                    let pageRes = await fetch(pageUrl);
+                    if(pageRes.status === 200) {
+                        process.stdout.write('OK');
+                        process.stdout.write('\nParsing HTML ... ');
+                        let pageHtml = await pageRes.text();
+                        let pageMatches = pageHtml.match(regex);
+                        let fileCount = 0;
+                        for(let j = 0; j < pageMatches.length; j++) {
+                            let pageMatch = pageMatches[j];
+                            let ini = 'href=\"'.length;
+                            let end = pageMatch.indexOf('.SRTMGL3.hgt.zip\"', ini);
+                            if(end === -1) continue;
+                            let fileUrl = pageMatch.substring(ini, end);
+                            const file = fileUrl.replace('http://', 'https://').replace(baseUrl, '');
+                            files.push(file);
+                            fileCount++;
+                        }
+                        process.stdout.write(`${fileCount} files found`);
+                    }
                 }
-            } else {
-                process.stdout.write(' ERROR');
             }
-        } catch(err) {
-            process.stdout.write(' FATAL ERROR');
-            console.error(err);
         }
+    } catch(err) {
+        process.stdout.write(' FATAL ERROR');
+        console.error(err);
+        return;
     }
 
     // Write file
-    let result = 'module.exports = ' + JSON.stringify(filelist, null, 4) + ';';
+    let result = 'module.exports = ' + JSON.stringify(files, null, 4) + ';';
     let filename = 'srtm-db.js';
     process.stdout.write('\nGenerating file ./src/'+filename+' ... ');
     fs.writeFileSync('./src/'+filename, result);

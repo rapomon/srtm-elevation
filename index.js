@@ -24,7 +24,7 @@ let timestampEnd;
 var tileset = new SyncTileSet('./data/', [minLat, minLng], [maxLat, maxLng], function(err) {
     if (err) {
         console.log(err);
-        return;
+        process.exit(1);
     }
     timestampEnd = process.hrtime();
     process.stdout.write('\nRetrieve tiles from NASA\'s server: ' + (timestampEnd[0] - timestampBegin[0]) + 's ' + (Math.abs(timestampEnd[1] - timestampBegin[1]) / 1000000) + 'ms\n');
@@ -39,5 +39,9 @@ var tileset = new SyncTileSet('./data/', [minLat, minLng], [maxLat, maxLng], fun
 
     timestampEnd = process.hrtime();
     process.stdout.write('\nElevation calculation time: ' + (timestampEnd[0] - timestampBegin[0]) + 's ' + (Math.abs(timestampEnd[1] - timestampBegin[1]) / 1000000) + 'ms\n');
+    process.exit(0);
 
+}, {
+    username: process.env.TEST_USERNAME,
+    password: process.env.TEST_PASSWORD
 });

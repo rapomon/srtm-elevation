@@ -7,14 +7,20 @@ test('can download file', function(t) {
         return t.end();
     }
 
-    var dler = new SRTMElevationDownloader(__dirname + '/data/');
-    dler.download('N57E011', [57.7, 11.9], function(err) {
-        if (!err) {
-            t.pass('file was downloaded successfully.');
-        } else {
-            t.fail(err);
-        }
-        t.end();
+    var dler = new SRTMElevationDownloader(__dirname + '/data/', {
+        username: process.env.TEST_USERNAME,
+        password: process.env.TEST_PASSWORD
+    });
+    dler.init('N57E011', function() {
+        console.log('yes')
+        dler.download('N57E011', [57.7, 11.9], function(err) {
+            if (!err) {
+                t.pass('file was downloaded successfully.');
+            } else {
+                t.fail(err);
+            }
+            t.end();
+        });
     });
 });
 
@@ -24,16 +30,21 @@ test('can handle multiple parallel downloads', function(t) {
         return t.end();
     }
 
-    var dler = new SRTMElevationDownloader(__dirname + '/data/');
+    var dler = new SRTMElevationDownloader(__dirname + '/data/', {
+        username: process.env.TEST_USERNAME,
+        password: process.env.TEST_PASSWORD
+    });
 
     t.plan(10);
-    for (var i = 0; i < 10; i++) {
-        dler.download('N57E011', [57.7, 11.9], function(err) {
-            if (!err) {
-                t.pass('file was downloaded successfully.');
-            } else {
-                t.fail(err);
-            }
-        });
-    }
+    dler.init('N57E011', function() {
+        for (var i = 0; i < 10; i++) {
+            dler.download('N57E011', [57.7, 11.9], function(err) {
+                if (!err) {
+                    t.pass('file was downloaded successfully.');
+                } else {
+                    t.fail(err);
+                }
+            });
+        }
+    });
 });

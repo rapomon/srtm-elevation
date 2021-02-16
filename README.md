@@ -5,6 +5,21 @@ This node module is based in [node-hgt](https://github.com/perliedman/node-hgt) 
 
 This module read and query HGT files after cache them from NASA's server, for elevation data with high performance.
 
+# BREAKING CHANGES IN v2.0.0!
+Since January 2021, you must authenticate in order to access the EarthData NASA elevation data.
+
+If you do not have an Earthdata Login, create one at https://urs.earthdata.nasa.gov/users/new.
+
+After activate the account you must specify your username and password when you instantiate the class `SyncTileSet`:
+
+```js
+    var tileset = new SyncTileSet('./data/', [57, 11], [58, 12], function(err) {
+        ...
+    }, {
+        username: 'XXX',
+        password: 'XXX'
+    });
+```
 
 ## Install
 
@@ -25,7 +40,7 @@ Load and query a HGT file:
 ```
 
 Use a cache directory of HGT files for querying. Missing data will be downloaded
-using the elevation data from [NASA's server](http://dds.cr.usgs.gov/srtm/),
+using the elevation data from [EarthData NASA's server](https://urs.earthdata.nasa.gov),
 by default.
 
 ```js
@@ -53,6 +68,9 @@ There's also a synchronous tile set, if you know before hand which area you will
 
         var elevation = tileset.getElevation([57.7, 11.9]);
         console.log(elevation);
+    }, {
+        username: 'XXX',
+        password: 'XXX'
     });
 ```
 
@@ -96,5 +114,8 @@ The first call will take longer because we have to download and unzip the .hgt.z
         locations.forEach(l => {
             console.log(tileset.getElevation([l[0], l[1]]));
         });
+    }, {
+        username: 'XXX',
+        password: 'XXX'
     });
 ```

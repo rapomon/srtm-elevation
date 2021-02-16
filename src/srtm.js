@@ -1,16 +1,71 @@
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
+const { pipeline } = require('stream');
+const { promisify } = require('util');
 const extend = require('extend');
 const Promise = require('promise');
-const request = require('request');
+const fetch = require('node-fetch');
 const yauzlPromise = require( 'yauzl-promise' );
 const srtmDb = require( './srtm-db' );
 
-function SRTMElevationDownloader(cacheDir, options) {
-    this.options = extend({}, options);
+function SRTMElevationDownloader(cacheDir, options = {}) {
+    this.options = extend({
+        // Earthdata Login credentials. If you do not have a Earthdata Login, create one at https://urs.earthdata.nasa.gov//users/new"
+        provider: 'https://e4ftl01.cr.usgs.gov/MEASURES/SRTMGL3.003/2000.02.11/',
+        username: null, // Required username
+        password: null  // Required password
+    }, options);
     this._cacheDir = cacheDir;
     this._downloads = {};
+}
+
+SRTMElevationDownloader.prototype.init = async function(tileKey, cb) {
+    var url = this._getUrl(tileKey);
+
+    if(url === null) {
+        cb(undefined);
+        return;
+    }
+
+    if(this.options.username && this.options.password && !this.options._cookie) {
+        const auth = "Basic " + Buffer.from(this.options.username + ":" + this.options.password).toString("base64");
+
+        let res = await fetch(url, {
+            headers : {
+                "Authorization" : auth
+            },
+            redirect: 'manual'
+        });
+    
+        const authorizeUrl = res.headers.raw()['location'];
+        if(!authorizeUrl) {
+            cb(undefined);
+            return;
+        }
+
+        res = await fetch(authorizeUrl, {
+            headers : {
+                "Authorization" : auth
+            },
+            redirect: 'manual'
+        });
+    
+        const oauthUrl = res.headers.raw()['location'];
+
+        if(!oauthUrl) {
+            cb(undefined);
+            return;
+        }
+
+        res = await fetch(oauthUrl, {
+            redirect: 'manual'
+        });
+    
+        this.options._cookie = res.headers.raw()['set-cookie'];
+    }
+
+    cb(undefined);
 }
 
 SRTMElevationDownloader.prototype.download = async function(tileKey, latLng, cb) {
@@ -51,34 +106,42 @@ SRTMElevationDownloader.prototype.download = async function(tileKey, latLng, cb)
 };
 
 SRTMElevationDownloader.prototype._getUrl = function(tileKey) {
-    const baseUrl = 'http://dds.cr.usgs.gov/srtm/version2_1/SRTM3';
     let url = null;
-    for(let i = 0; i < srtmDb.length; i++) {
-        let item = srtmDb[i];
-        if(item.files.includes(tileKey)) {
-            url = baseUrl + '/' + item.region + '/' + tileKey + '.hgt.zip';
-            break;
-        }
+    if(srtmDb.includes(tileKey)) {
+        url = this.options.provider + (!this.options.provider.endsWith('/') ? '/' : '') + tileKey + '.SRTMGL3.hgt.zip';
     }
     return url;
 };
 
 SRTMElevationDownloader.prototype._download = function(url, stream) {
-    return new Promise(function(fulfill, reject) {
-        request(url, function(err, response) {
-            if (!err && response.statusCode === 200) {
+    let _this = this;
+    return new Promise(async function(fulfill, reject) {
+        const streamPipeline = promisify(pipeline);
+        let _options = {};
+        if(_this.options._cookie) {
+            _options.headers = {
+                'Cookie': _this.options._cookie
+            };
+        }
+        let response;
+        try {
+            response = await fetch(url, _options);
+            if(response.status === 200) {
+                await streamPipeline(response.body, stream);
                 fulfill(stream);
-            } else {
-                // Second retry
-                request(url, function(err, response) {
-                    if (!err && response.statusCode === 200) {
-                        fulfill(stream);
-                    } else {
-                        reject(err || response);
-                    }
-                }).pipe(stream);
             }
-        }).pipe(stream);
+        } catch(err) {
+            try {
+                // Second retry
+                response = await fetch(url, _options);
+                if(response.status === 200) {
+                    await streamPipeline(response.body, stream);
+                    fulfill(stream);
+                }
+            } catch(err) {
+                reject(err || response.headers['www-authenticate'] || response);
+            }
+        }
     });
 };
 

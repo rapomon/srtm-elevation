@@ -17,7 +17,6 @@ module.exports = function(tileDir, latLng, cb) {
         setImmediate(function() {
             try {
                 tile = new Hgt(tilePath, ll);
-                // TODO: Hgt creation options
                 cb(undefined, tile);
             } catch (e) {
                 cb({message: 'Unable to load tile "' + tilePath + '": ' + e, stack: e.stack});

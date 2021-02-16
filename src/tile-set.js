@@ -8,7 +8,7 @@ var extend = require('extend'),
 function TileSet(tileDir, options) {
     this.options = extend({}, {
         loadTile: loadTile,
-        downloader: new SRTMElevationDownloader(tileDir)
+        downloader: new SRTMElevationDownloader(tileDir, options)
     }, options);
     if (options && options.downloader === undefined) {
         this.options.downloader = undefined;
