@@ -59,7 +59,12 @@ function SyncTileSet(tileDir, sw, ne, cb, options) {
         }
     }
 
-    let afterInit = () => {
+    let afterInit = (err) => {
+        if(err) {
+            return setImmediate(function() {
+                cb(err);
+            });
+        }
         let _loadTile = this.options.loadTile.bind(this);
         let _this = this;
         let tasks = flatten(rangeSN.map(function(lat, i) {

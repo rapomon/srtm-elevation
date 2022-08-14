@@ -8,14 +8,16 @@ const Promise = require('promise');
 const fetch = require('node-fetch');
 const yauzlPromise = require( 'yauzl-promise' );
 const srtmDb = require( './srtm-db' );
+const https = require('https');
 
 function SRTMElevationDownloader(cacheDir, options = {}) {
     this.options = extend({
-        // Earthdata Login credentials. If you do not have a Earthdata Login, create one at https://urs.earthdata.nasa.gov//users/new"
-        provider: 'https://e4ftl01.cr.usgs.gov/MEASURES/SRTMGL3.003/2000.02.11/',
-        username: null, // Required username
-        password: null  // Required password
+        provider: 'https://srtm.fasma.org/{lat}{lng}.SRTMGL3S.hgt.zip',
+        username: null, // Earthdata username
+        password: null, // Earthdata password
     }, options);
+    this._timeout = 30000; // Global fetch timeout
+    this._httpsAgent = new https.Agent({ rejectUnauthorized: false }); // Ignore SSL certificates
     this._cacheDir = cacheDir;
     this._downloads = {};
 }
@@ -24,45 +26,72 @@ SRTMElevationDownloader.prototype.init = async function(tileKey, cb) {
     var url = this._getUrl(tileKey);
 
     if(url === null) {
-        cb(undefined);
+        cb(new Error("Missing url"));
         return;
     }
 
     if(this.options.username && this.options.password && !this.options._cookie) {
         const auth = "Basic " + Buffer.from(this.options.username + ":" + this.options.password).toString("base64");
 
-        let res = await fetch(url, {
-            headers : {
-                "Authorization" : auth
-            },
-            redirect: 'manual'
-        });
+        let res;
+
+        try {
+            res = await fetch(url, {
+                timeout: this._timeout,
+                agent: this._httpsAgent,
+                redirect: 'manual'
+            });
+        } catch(err) {
+            cb(err);
+            return;
+        }
     
         const authorizeUrl = res.headers.raw()['location'];
         if(!authorizeUrl) {
-            cb(undefined);
+            cb(new Error("Missing authorization url"));
             return;
         }
 
-        res = await fetch(authorizeUrl, {
-            headers : {
-                "Authorization" : auth
-            },
-            redirect: 'manual'
-        });
-    
+        try {
+            res = await fetch(authorizeUrl[0], {
+                headers : {
+                    "Authorization": auth
+                },
+                timeout: this._timeout,
+                agent: this._httpsAgent,
+                redirect: 'manual'
+            });
+        } catch(err) {
+            cb(err);
+            return;
+        }
+
         const oauthUrl = res.headers.raw()['location'];
 
         if(!oauthUrl) {
-            cb(undefined);
+            cb(new Error("Missing oauth url"));
             return;
         }
 
-        res = await fetch(oauthUrl, {
-            redirect: 'manual'
-        });
-    
-        this.options._cookie = res.headers.raw()['set-cookie'];
+        try {
+            res = await fetch(oauthUrl[0], {
+                timeout: this._timeout,
+                agent: this._httpsAgent,
+                redirect: 'manual'
+            });
+        } catch(err) {
+            cb(err);
+            return;
+        }
+
+        const cookie = res.headers.raw()['set-cookie'];
+
+        if(!cookie) {
+            cb(new Error("Missing cookie"));
+            return;
+        }
+
+        this.options._cookie = cookie[0];
     }
 
     cb(undefined);
@@ -108,7 +137,9 @@ SRTMElevationDownloader.prototype.download = async function(tileKey, latLng, cb)
 SRTMElevationDownloader.prototype._getUrl = function(tileKey) {
     let url = null;
     if(srtmDb.includes(tileKey)) {
-        url = this.options.provider + (!this.options.provider.endsWith('/') ? '/' : '') + tileKey + '.SRTMGL3.hgt.zip';
+        const lat = tileKey.substr(0, 3);
+        const lng = tileKey.substr(3, 4);
+        url = this.options.provider.replace(/{lat}/g, lat).replace(/{lng}/g, lng);
     }
     return url;
 };
@@ -118,29 +149,22 @@ SRTMElevationDownloader.prototype._download = function(url, stream) {
     return new Promise(async function(fulfill, reject) {
         const streamPipeline = promisify(pipeline);
         let _options = {};
+        _options.agent = _this._httpsAgent;
+        _options.timeout = _this._timeout;
+        _options.headers = {};
         if(_this.options._cookie) {
-            _options.headers = {
-                'Cookie': _this.options._cookie
-            };
+            _options.headers['Cookie'] = _this.options._cookie;
         }
-        let response;
         try {
-            response = await fetch(url, _options);
+            const response = await fetch(url, _options);
             if(response.status === 200) {
                 await streamPipeline(response.body, stream);
                 fulfill(stream);
+            } else {
+                reject(new Error("Error downloading file"));
             }
         } catch(err) {
-            try {
-                // Second retry
-                response = await fetch(url, _options);
-                if(response.status === 200) {
-                    await streamPipeline(response.body, stream);
-                    fulfill(stream);
-                }
-            } catch(err) {
-                reject(err || response.headers['www-authenticate'] || response);
-            }
+            reject(err || response.headers['www-authenticate'] || response);
         }
     });
 };

@@ -7,12 +7,8 @@ test('can download file', function(t) {
         return t.end();
     }
 
-    var dler = new SRTMElevationDownloader(__dirname + '/data/', {
-        username: process.env.TEST_USERNAME,
-        password: process.env.TEST_PASSWORD
-    });
+    var dler = new SRTMElevationDownloader(__dirname + '/data/');
     dler.init('N57E011', function() {
-        console.log('yes')
         dler.download('N57E011', [57.7, 11.9], function(err) {
             if (!err) {
                 t.pass('file was downloaded successfully.');
@@ -30,10 +26,7 @@ test('can handle multiple parallel downloads', function(t) {
         return t.end();
     }
 
-    var dler = new SRTMElevationDownloader(__dirname + '/data/', {
-        username: process.env.TEST_USERNAME,
-        password: process.env.TEST_PASSWORD
-    });
+    var dler = new SRTMElevationDownloader(__dirname + '/data/');
 
     t.plan(10);
     dler.init('N57E011', function() {
