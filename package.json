@@ -64,5 +64,5 @@
     "perf": "node ./test/perf-test.js",
     "test": "tape ./test/*spec.js | tap-spec"
   },
-  "version": "2.1.0"
+  "version": "2.1.1"
 }

@@ -21,17 +21,18 @@ const tileset = new SyncTileSet('./data/', [57, 11], [58, 12], function(err) {
   password: null
 }
 ```
-The ``provider`` option it's the url where the library will get the HGT files compressed in ZIP format. The url supports two dynamic values, ``{lat}`` and ``{lng}`` matching the Latitude/Longitude needed to get elevations of coordinates inside the specified bounds.
+The ``provider`` option it's the url where the library will get the HGT files (1 arcsecond and 3 arcsecond supported) compressed in ZIP format. 
+The url supports two dynamic values, ``{lat}`` and ``{lng}`` matching the Latitude/Longitude needed to get elevations of coordinates inside the specified bounds.
 
 The default value is https://srtm.fasma.org/{lat}{lng}.SRTMGL3S.hgt.zip but you can specify other providers such as:
 
 #### Bailu
-```http
+```
 https://bailu.ch/dem3/{lat}/{lat}{lng}.hgt.zip
 ```
 
 #### Nasa (EarthData)
-```http
+```
 https://e4ftl01.cr.usgs.gov/MEASURES/SRTMGL3.003/2000.02.11/{lat}{lng}.SRTMGL3.hgt.zip
 ```
   
