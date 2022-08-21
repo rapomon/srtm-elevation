@@ -27,7 +27,7 @@ var tileset = new SyncTileSet('./data/', [minLat, minLng], [maxLat, maxLng], fun
         process.exit(1);
     }
     timestampEnd = process.hrtime();
-    process.stdout.write('\nRetrieve tiles from NASA\'s server: ' + (timestampEnd[0] - timestampBegin[0]) + 's ' + (Math.abs(timestampEnd[1] - timestampBegin[1]) / 1000000) + 'ms\n');
+    process.stdout.write('\nRetrieve tiles from provider: ' + (timestampEnd[0] - timestampBegin[0]) + 's ' + (Math.abs(timestampEnd[1] - timestampBegin[1]) / 1000000) + 'ms\n');
 
     timestampBegin = process.hrtime();
 

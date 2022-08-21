@@ -30,7 +30,7 @@ SRTMElevationDownloader.prototype.init = async function(tileKey, cb) {
         return;
     }
 
-    if(this.options.username && this.options.password && !this.options._cookie) {
+    if(this.options.provider.indexOf("usgs.gov") !== -1 && this.options.username && this.options.password && !this.options._cookie) {
         const auth = "Basic " + Buffer.from(this.options.username + ":" + this.options.password).toString("base64");
 
         let res;

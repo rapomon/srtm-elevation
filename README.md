@@ -38,7 +38,7 @@ https://e4ftl01.cr.usgs.gov/MEASURES/SRTMGL3.003/2000.02.11/{lat}{lng}.SRTMGL3.h
   
 Since January 2021, you must authenticate in order to access the EarthData NASA elevation data.
 
-So in this case, we must specify two more options, ``username`` and ``password``.
+So in this case, we must specify two more options, ``username`` and ``password``, otherwise the options will be ignored.
 
 From mid-2022 this server is down frecuently so it's not recommended, anyway if you want to use it, you will need Earthdata Login credentials. If you do not have a Earthdata Login, create one at https://urs.earthdata.nasa.gov//users/new"
 
@@ -105,12 +105,12 @@ const tileset = new SyncTileSet('./data/', [57, 11], [58, 12], function(err) {
 
 ## Full example
 
-In this example, we have an array of locations with a route from Madrid to Paris. We determine the bounds by calculating the minimum and maximum latitude and longitude. The SyncTileSet function will retrieve the necessary hgt files from the NASA's server and will cache it. In the callback we calculate the elevation of each point.
+In this example, we have an array of locations with a route from Madrid to Paris. We determine the bounds by calculating the minimum and maximum latitude and longitude. The SyncTileSet function will retrieve the necessary hgt files from the specified provider and will cache it. In the callback we calculate the elevation of each point.
 
 The first call will take longer because we have to download and unzip the .hgt.zip files, the following calls will be faster because the files have been cached.
 
 ```js
-const SyncTileSet = require('./src').SyncTileSet;
+const SyncTileSet = require('srtm-elevation').SyncTileSet;
 
 // From Madrid to Paris [ latitude, longitude ]
 const locations = [
